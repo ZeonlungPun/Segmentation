@@ -1,5 +1,6 @@
 coco dataset format:
 
+'''
 coco2
 ├── annotations
 │   ├── instances_train2017.json
@@ -16,4 +17,4 @@ coco2
     ├── 65.jpg
 
     └── 80.jpg
-
+'''
