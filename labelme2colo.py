@@ -1,6 +1,3 @@
-# 命令行执行： python labelme2coco.py --input_dir images --output_dir coco --labels labels.txt
-# 输出文件夹必须为空文件夹
-
 import argparse
 import collections
 import datetime
@@ -23,7 +20,6 @@ except ImportError:
 
 
 def to_coco(args, label_files, train):
-    # 创建 总标签data
     now = datetime.datetime.now()
     data = dict(
         info=dict(
@@ -35,25 +31,19 @@ def to_coco(args, label_files, train):
             date_created=now.strftime("%Y-%m-%d %H:%M:%S.%f"),
         ),
         licenses=[dict(url=None, id=0, name=None, )],
-        images=[
-            # license, url, file_name, height, width, date_captured, id
-        ],
+        images=[],
         type="instances",
-        annotations=[
-            # segmentation, area, iscrowd, image_id, bbox, category_id, id
-        ],
-        categories=[
-            # supercategory, id, name
-        ],
+        annotations=[],
+        categories=[],
     )
 
-    # 创建一个 {类名 : id} 的字典，并保存到 总标签data 字典中。
+    # 修改：類別 ID 從 1 開始
     class_name_to_id = {}
     for i, line in enumerate(open(args.labels).readlines()):
-        class_id = i - 1  # starts with -1
-        class_name = line.strip()  # strip() 方法用于移除字符串头尾指定的字符(默认为空格或换行符)或字符序列。
-        if class_id == -1:
-            assert class_name == "__ignore__"  # background:0, class1:1, ,,
+        class_id = i  # 直接從 0 開始（背景也可以視為一類）
+        class_name = line.strip()
+        if class_id == 0:
+            assert class_name == "__ignore__"  # background:0
             continue
         class_name_to_id[class_name] = class_id
         data["categories"].append(
@@ -66,9 +56,8 @@ def to_coco(args, label_files, train):
         out_ann_file = osp.join(args.output_dir, "annotations", "instances_val2017.json")
 
     for image_id, filename in enumerate(label_files):
-
         label_file = labelme.LabelFile(filename=filename)
-        base = osp.splitext(osp.basename(filename))[0]  # 文件名不带后缀
+        base = osp.splitext(osp.basename(filename))[0]
         if train:
             out_img_file = osp.join(args.output_dir, "train2017", base + ".jpg")
         else:
@@ -76,23 +65,14 @@ def to_coco(args, label_files, train):
 
         print("| ", out_img_file)
 
-        # ************************** 对图片的处理开始 *******************************************
-        # 将标签文件对应的图片进行保存到对应的 文件夹。train保存到 train2017/ test保存到 val2017/
-        img = labelme.utils.img_data_to_arr(label_file.imageData)  # .json文件中包含图像，用函数提出来
-        imgviz.io.imsave(out_img_file, img)  # 将图像保存到输出路径
+        img = labelme.utils.img_data_to_arr(label_file.imageData)
+        imgviz.io.imsave(out_img_file, img)
 
-        # ************************** 对图片的处理结束 *******************************************
-
-        # ************************** 对标签的处理开始 *******************************************
         data["images"].append(
             dict(
                 license=0,
                 url=None,
                 file_name=osp.relpath(out_img_file, osp.dirname(out_ann_file)),
-                #   out_img_file = "/coco/train2017/1.jpg"
-                #   out_ann_file = "/coco/annotations/annotations_train2017.json"
-                #   osp.dirname(out_ann_file) = "/coco/annotations"
-                #   file_name = ..\train2017\1.jpg   out_ann_file文件所在目录下 找 out_img_file 的相对路径
                 height=img.shape[0],
                 width=img.shape[1],
                 date_captured=None,
@@ -100,8 +80,8 @@ def to_coco(args, label_files, train):
             )
         )
 
-        masks = {}  # for area
-        segmentations = collections.defaultdict(list)  # for segmentation
+        masks = {}
+        segmentations = collections.defaultdict(list)
         for shape in label_file.shapes:
             points = shape["points"]
             label = shape["label"]
@@ -154,9 +134,6 @@ def to_coco(args, label_files, train):
                     iscrowd=0,
                 )
             )
-        # ************************** 对标签的处理结束 *******************************************
-
-        # ************************** 可视化的处理开始 *******************************************
         if not args.noviz:
             labels, captions, masks = zip(
                 *[
@@ -177,32 +154,34 @@ def to_coco(args, label_files, train):
                 args.output_dir, "visualization", base + ".jpg"
             )
             imgviz.io.imsave(out_viz_file, viz)
-        # ************************** 可视化的处理结束 *******************************************
 
-    with open(out_ann_file, "w") as f:  # 将每个标签文件汇总成data后，保存总标签data文件
+    with open(out_ann_file, "w") as f:
         json.dump(data, f)
 
 
-# 主程序执行
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument("--input_dir",default='/home/kingargroo/fungs_rect_imgs/dataano' ,help="input annotated directory")
-    parser.add_argument("--output_dir", default='/home/kingargroo/fungs_rect_imgs/coco2',help="output dataset directory")
-    parser.add_argument("--labels",default='/home/kingargroo/fungs_rect_imgs/label.txt' ,help="labels file")
+    parser.add_argument("--input_dir", default='/home/kingargroo/fungs_rect_imgs/dataano', help="input annotated directory")
+    parser.add_argument("--output_dir", default='/home/kingargroo/fungs_rect_imgs/coco2', help="output dataset directory")
+    parser.add_argument("--labels", default='/home/kingargroo/fungs_rect_imgs/label.txt', help="labels file")
     parser.add_argument("--noviz", help="no visualization", action="store_true")
     args = parser.parse_args()
 
     if osp.exists(args.output_dir):
-        print("Output directory already exists:", args.output_dir)
-        sys.exit(1)
-    os.makedirs(args.output_dir)
+        # 清空文件夾，而不是終止程序
+        print("Output directory already exists, clearing it:", args.output_dir)
+        for root, dirs, files in os.walk(args.output_dir):
+            for file in files:
+                os.remove(osp.join(root, file))
+
+    os.makedirs(args.output_dir, exist_ok=True)
     print("| Creating dataset dir:", args.output_dir)
     if not args.noviz:
-        os.makedirs(osp.join(args.output_dir, "visualization"))
+        os.makedirs(osp.join(args.output_dir, "visualization"), exist_ok=True)
 
-    # 创建保存的文件夹
+
     if not os.path.exists(osp.join(args.output_dir, "annotations")):
         os.makedirs(osp.join(args.output_dir, "annotations"))
     if not os.path.exists(osp.join(args.output_dir, "train2017")):
@@ -210,25 +189,19 @@ def main():
     if not os.path.exists(osp.join(args.output_dir, "val2017")):
         os.makedirs(osp.join(args.output_dir, "val2017"))
 
-    # 获取目录下所有的.jpg文件列表
     feature_files = glob.glob(osp.join(args.input_dir, "*.jpg"))
     print('| Image number: ', len(feature_files))
 
-    # 获取目录下所有的joson文件列表
     label_files = glob.glob(osp.join(args.input_dir, "*.json"))
     print('| Json number: ', len(label_files))
 
-    # feature_files:待划分的样本特征集合    label_files:待划分的样本标签集合    test_size:测试集所占比例
-    # x_train:划分出的训练集特征      x_test:划分出的测试集特征     y_train:划分出的训练集标签    y_test:划分出的测试集标签
     x_train, x_test, y_train, y_test = train_test_split(feature_files, label_files, test_size=0.3)
     print("| Train number:", len(y_train), '\t Value number:', len(y_test))
 
-    # 把训练集标签转化为COCO的格式，并将标签对应的图片保存到目录 /train2017/
     print("—" * 50)
     print("| Train images:")
     to_coco(args, y_train, train=True)
 
-    # 把测试集标签转化为COCO的格式，并将标签对应的图片保存到目录 /val2017/
     print("—" * 50)
     print("| Test images:")
     to_coco(args, y_test, train=False)
