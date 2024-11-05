@@ -1,82 +1,64 @@
-import os
 import json
 import numpy as np
 import cv2
-import shutil
-
-from tqdm import tqdm
+import os
 
 
-# 0-背景，从 1 开始
-class_info = [
-    {'label':'P', 'type':'polygon', 'color':1},                    # polygon 多段线
-]
+def labelme_json_to_binary_mask(json_path, image_shape):
+    # 打開並解析 LabelMe 的 JSON 文件
+    with open(json_path, 'r') as f:
+        label_data = json.load(f)
+
+    # 創建一個與影像大小相同的空白遮罩，背景為0
+    mask = np.zeros((image_shape[0], image_shape[1]), dtype=np.uint8)
+
+    # 遍歷 JSON 文件中的所有標註區域
+    for shape in label_data['shapes']:
+        points = shape['points']
+
+        # 如果 points 只有兩個點，則假設是圓形
+        if len(points) == 2:
+            # 圓心
+            center = tuple(map(int, points[0]))
+            # 根據圓心和圓周點計算半徑
+            radius = int(np.linalg.norm(np.array(points[0]) - np.array(points[1])))
+            # 使用 OpenCV 繪製圓形遮罩，將前景區域設置為255
+            cv2.circle(mask, center, radius, color=255, thickness=-1)
+        else:
+            # 如果是多邊形，則使用多邊形填充
+            polygon = np.array(points, dtype=np.int32)
+            cv2.fillPoly(mask, [polygon], color=255)
+
+    return mask
 
 
-def labelme2mask_single_img(img_path, labelme_json_path):
-    '''
-    输入原始图像路径和labelme标注路径，输出 mask
-    '''
-    img_bgr = cv2.imread(img_path)
-    img_mask = np.zeros(img_bgr.shape[:2])  # 创建空白图像 0-背景
-
-    with open(labelme_json_path, 'r', encoding='utf-8') as f:
-        labelme = json.load(f)
-
-    for one_class in class_info:  # 按顺序遍历每一个类别
-        for each in labelme['shapes']:  # 遍历所有标注，找到属于当前类别的标注
-            if each['label'] == one_class['label']:
-                if one_class['type'] == 'polygon':  # polygon 多段线标注
-
-                    # 获取点的坐标
-                    points = [np.array(each['points'], dtype=np.int32).reshape((-1, 1, 2))]
-
-                    # 在空白图上画 mask（闭合区域）
-                    img_mask = cv2.fillPoly(img_mask, points, color=one_class['color'])
-
-                elif one_class['type'] == 'line' or one_class['type'] == 'linestrip':  # line 或者 linestrip 线段标注
-
-                    # 获取点的坐标
-                    points = [np.array(each['points'], dtype=np.int32).reshape((-1, 1, 2))]
-
-                    # 在空白图上画 mask（非闭合区域）
-                    img_mask = cv2.polylines(img_mask, points, isClosed=False, color=one_class['color'],thickness=one_class['thickness'])
-
-                elif one_class['type'] == 'circle':  # circle 圆形标注
-
-                    points = np.array(each['points'], dtype=np.int32)
-
-                    center_x, center_y = points[0][0], points[0][1]  # 圆心点坐标
-
-                    edge_x, edge_y = points[1][0], points[1][1]  # 圆周点坐标
-
-                    radius = np.linalg.norm(np.array([center_x, center_y] - np.array([edge_x, edge_y]))).astype('uint32')  # 半径
-
-                    img_mask = cv2.circle(img_mask, (center_x, center_y), radius, one_class['color'],one_class['thickness'])
-
-                else:
-                    print('未知标注类型', one_class['type'])
-
-    return img_mask
-img_list=os.listdir('/home/kingargroo/seg/new')
-json_base='/home/kingargroo/seg/newlabel'
-
-for i in tqdm(img_list):
-    try:
-        img_path = os.path.join('/home/kingargroo/seg/new', i)
+def save_binary_mask(mask, save_path):
+    # 將二進制遮罩保存為圖像文件（例如 PNG 格式）
+    cv2.imwrite(save_path, mask)
 
 
-        labelme_json_path =os.path.join(json_base,i.split('.')[0])
-        labelme_json_path=labelme_json_path+'.json'
+all_img_list = "/home/kingargroo/fungs_rect_imgs/img3"
+labelme_path = "/home/kingargroo/fungs_rect_imgs/labelme2"
+save_path_main = "/home/kingargroo/fungs_rect_imgs/mask3"
 
-        img_mask = labelme2mask_single_img(img_path, labelme_json_path)
+# 遍歷圖像目錄
+for image_path in os.listdir(all_img_list):
+    main_name = image_path.split('.')[0]
+    image_path = os.path.join(all_img_list, image_path)
+    label_path = os.path.join(labelme_path, main_name + '.json')
+    print(label_path)
 
-        mask_path = i.split('.')[0] + '.png'
-        final_path=os.path.join('/home/kingargroo/seg/', 'newmask', mask_path)
-        #img_mask = cv2.imread(final_path)
-        #img_mask=cv2.cvtColor(img_mask,cv2.COLOR_BGR2GRAY)
-        print(final_path,img_mask.shape)
-        cv2.imwrite(final_path, img_mask)
+    image = cv2.imread(image_path)
+    image_shape = image.shape[:2]  # 獲取影像的大小 (高, 寬)
 
-    except Exception as E:
-        print(img_path, '转换失败', E)
+    # 生成二進制遮罩
+    mask = labelme_json_to_binary_mask(label_path, image_shape)
+    save_path = os.path.join(save_path_main, main_name + '.png')
+    save_binary_mask(mask, save_path)
+    print(f"二進制遮罩已保存至: {save_path}")
+
+
+
+
+
+
