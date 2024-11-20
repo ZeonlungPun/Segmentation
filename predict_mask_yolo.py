@@ -135,10 +135,10 @@ def get_all_predict_and_true(true_dir, pred_dir):
 
 
 model = YOLO('runs/segment/train8/weights/best.pt')
-true_dir = '/home/kingargroo/fungs_rect_imgs/voc2/test/images'
-save_dir = '/home/kingargroo/fungs_rect_imgs/voc2/test/masks2'
+true_dir = '/home/kingargroo/fungs_rect_imgs/voc2/train/images'
+save_dir = '/home/kingargroo/fungs_rect_imgs/voc2/train/masks2'
 preict_all(model, true_dir, save_dir)
-gt_dir='/home/kingargroo/fungs_rect_imgs/voc2/test/masks'
-pred_dir='/home/kingargroo/fungs_rect_imgs/voc2/test/masks2'
-image_ids=os.listdir(gt_dir)
-hist, IoUs, PA_Recall, Precision = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes=2, name_classes=['background','bacteria'])  # 执行计算mIoU的函数
+# gt_dir='/home/kingargroo/fungs_rect_imgs/voc2/test/masks'
+# pred_dir='/home/kingargroo/fungs_rect_imgs/voc2/test/masks2'
+# image_ids=os.listdir(gt_dir)
+# hist, IoUs, PA_Recall, Precision = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes=2, name_classes=['background','bacteria'])  # 执行计算mIoU的函数
