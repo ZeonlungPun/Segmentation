@@ -23,11 +23,11 @@ def labelme_json_to_binary_mask(json_path, image_shape):
             # 根據圓心和圓周點計算半徑
             radius = int(np.linalg.norm(np.array(points[0]) - np.array(points[1])))
             # 使用 OpenCV 繪製圓形遮罩，將前景區域設置為255
-            cv2.circle(mask, center, radius, color=255, thickness=-1)
+            cv2.circle(mask, center, radius, color=1, thickness=-1)
         else:
             # 如果是多邊形，則使用多邊形填充
             polygon = np.array(points, dtype=np.int32)
-            cv2.fillPoly(mask, [polygon], color=255)
+            cv2.fillPoly(mask, [polygon], color=1)
 
     return mask
 
