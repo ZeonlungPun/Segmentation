@@ -9,8 +9,8 @@ from labelme import utils
 class Labelme2COCO:
     def __init__(self, labelme_json=[], save_json_path="./coco.json"):
         """
-        :param labelme_json: 所有labelme的json文件路径组成的列表
-        :param save_json_path: 保存路径
+        :param labelme_json: 所有labelme的json
+        :param save_json_path: 保存路徑，json註冊表
         """
         self.labelme_json = labelme_json
         self.save_json_path = save_json_path
@@ -40,7 +40,7 @@ class Labelme2COCO:
                     )
                     self.annID += 1
 
-        # 对所有的labelme标签进行编号
+        # 編號
         self.label_list = sorted(list(self.label_set))
         for label in self.label_list:
             self.categories.append(self.category(label))
@@ -70,7 +70,7 @@ class Labelme2COCO:
     def annotation(self, points, label, num, shape_type):
         annotation = {}
         if shape_type == "circle":
-            # 处理圆形标注
+            # 圓形標註
             center = np.array(points[0])
             circumference_point = np.array(points[1])
             radius = np.linalg.norm(center - circumference_point)
@@ -92,7 +92,7 @@ class Labelme2COCO:
             y_min = center[1] - radius
             bbox = [x_min, y_min, 2 * radius, 2 * radius]
         else:
-            # 默认处理为多边形
+            # 多邊形標註
             contour = np.array(points)
             x = contour[:, 0]
             y = contour[:, 1]
